@@ -6,13 +6,24 @@ from collections import deque
 class SimpleReplayBuffer:
     def __init__(self, capacity):
         self.capacity = capacity
-        self.buffer = deque(maxlen=capacity)
+        self.buffer = []
+        self.pos = 0
+        self.size = 0
 
     def push(self, *args):
-        self.buffer.append(args)
+        if len(self.buffer) < self.capacity:
+            self.buffer.append(args)
+        else:
+            self.buffer[self.pos] = args
+        self.pos = (self.pos + 1) % self.capacity
+        self.size = min(self.size + 1, self.capacity)
 
     def sample(self, batch_size):
-        return random.sample(self.buffer, batch_size)
+        n = len(self.buffer)
+        if n < batch_size:
+            return self.buffer[:]          # 或 random.sample，n 小无所谓
+        idx = np.random.randint(0, n, size=batch_size)
+        return [self.buffer[i] for i in idx]
 
     def __len__(self):
         return len(self.buffer)
@@ -48,7 +59,7 @@ class ScalableReplayBuffer:
         batch = []
         for key, value in self.buffer.items():
             num = min(len(value), batch_size)
-            batch += random.sample(self.buffer[key], num)
+            batch += random.sample(value, num)
         return batch
 
     def __len__(self):

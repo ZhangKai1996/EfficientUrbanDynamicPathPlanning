@@ -1,9 +1,5 @@
-import math
-
 import numpy as np
-from tqdm import tqdm
 
-from algo.baselines import dijkstra_path
 from env.utils import haversine
 from .rendering import StaticRender
 
@@ -34,14 +30,13 @@ class DPPEnvironment:
         self.graph = graph
         self.num_action = num_action
         self.nodes: list = list(graph.nodes)
+        self.node2id = {node: i for i, node in enumerate(self.nodes)}
 
         self.od_pairs = od_pairs
         self.start_node_idx = None
         self.end_node_idx = None
-
         self.cur_node_idx = None
         self.last_node_idx = None
-        self.dist = {}
 
         self.e = e
         self.b = b
@@ -75,13 +70,6 @@ class DPPEnvironment:
             self.start_node_idx = self.nodes.index(od_pair[0])
             self.end_node_idx = self.nodes.index(od_pair[1])
 
-            # if self.end_node not in self.dist.keys():
-            #     dist = {}
-            #     for node in tqdm(self.nodes, desc='Finding shortest paths ...'):
-            #         cost, _ = dijkstra_path(self.graph, node, self.end_node, weight_key='length')
-            #         dist[node] = cost
-            #     self.dist[self.end_node] = dist
-
             self.dfr.update()
 
         self.cur_node_idx = self.start_node_idx
@@ -104,9 +92,6 @@ class DPPEnvironment:
         d1 = haversine(nodes[u], nodes[self.end_node])
         d2 = haversine(nodes[v], nodes[self.end_node])
 
-        # d1 = self.dist[self.end_node][u]
-        # d2 = self.dist[self.end_node][v]
-
         phi_s = -d1 * self.zeta + self.b
         phi_s_prime = -d2 * self.zeta + self.b
         diff = 1.0 * phi_s_prime - phi_s
@@ -126,7 +111,7 @@ class DPPEnvironment:
         cur_node = self.nodes[self.cur_node_idx]
         next_nodes = self.p[cur_node]
         next_node = next_nodes[action]
-        next_node_idx = self.nodes.index(next_node)
+        next_node_idx = self.node2id[next_node]
         done = (next_node_idx == self.end_node_idx)
 
         # Reward (COST)
@@ -141,7 +126,8 @@ class DPPEnvironment:
 
         # Dynamics update per step
         # self.dfr.update()
-        return self.get_state(), [shaped_reward, original_reward], done, [cost, ]
+        next_state = self.get_state()
+        return next_state, [shaped_reward, original_reward], done, [cost, ]
 
     def render(self, *args, **kwargs):
         if self.cv_render is None: return

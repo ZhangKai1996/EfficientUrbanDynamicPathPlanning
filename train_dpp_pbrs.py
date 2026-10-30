@@ -14,7 +14,7 @@ from algo.trainer_dqn import DPPBSRSTrainer
 from env.utils import haversine
 from env.environment import DPPEnvironment
 from env.core import DFRGenerator
-from env.geo import load_graph, get_hop_neighbors
+from env.geo import load_graph
 
 
 def train_dqn(env,
@@ -23,7 +23,6 @@ def train_dqn(env,
               max_step=100,
               save_rate=None,
               batch_size=32,
-              other_dim=0,
               beta=0.0,
               epsilon_end=0.1,
               epsilon_decay=0.1,
@@ -33,8 +32,8 @@ def train_dqn(env,
     trainer = DPPBSRSTrainer(graph, p, num_action,
                              beta=beta,
                              gamma=gamma,
-                             other_dim=other_dim,
                              batch_size=batch_size,
+                             dyn_dim=env.dfr.dyn_dim,
                              epsilon_decay=int(num_episodes_train * epsilon_decay),
                              epsilon_end=epsilon_end)
 
@@ -62,9 +61,9 @@ def train_dqn(env,
     step = 0
     for episode in tqdm(range(1, num_episodes_train + 1)):
         done, (state, dyn, mask) = False, env.reset()
-
         total_shaped_reward, total_cost, total_original_reward = 0.0, 0.0, 0.0
         episode_step = 0
+
         while not done:
             action = trainer.choose_action(state, dyn=dyn, mask=mask, episode=episode)
             (next_state, next_dyn, next_mask), reward, done, info = env.step(action)
@@ -74,9 +73,9 @@ def train_dqn(env,
             experience = (state, dyn, mask,
                           action, shaped_reward, original_reward,
                           next_state, next_dyn, next_mask, float(done))
-            trainer.replay_buffer.push(*experience, key=env.end_node_idx)
+            trainer.replay_buffer.push(*experience)
 
-            if episode_step <= 2:
+            if episode_step <= 1:
                 loss = trainer.update_q_network(t=step)
                 if loss is not None: loss_stats.append(loss)
 
@@ -125,10 +124,6 @@ def train_dqn(env,
             # writer.add_scalar('Gap', result[1], episode)
 
             trainer.save_model(folder)
-            # epoch = episode // save_rate
-            # total_epoch = num_episodes_train//save_rate
-            # if epoch >= int(0.99*total_epoch):
-            #     trainer.save_model(folder, prefix=epoch)
 
             rew_stats, loss_stats, step_stats = [], [], []
             start_time = end_time
@@ -185,10 +180,14 @@ def test_dqn(env, trainer, num_episodes=100, max_step=100):
 
 
 def main():
-    from parameters import alpha, gamma, seed
+    from parameters import alpha, gamma, seed, n
     from parameters import radius, length_limit, env_id, env_kwargs, kwargs
 
-    suffix = 'Dynamic Feature'
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+    suffix = 'Test'
     param_lst = [
         {'exp_name': 'Only Static', 'a': -1.0, 'e': 60.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
     ]
@@ -196,47 +195,39 @@ def main():
     args = load_graph(radius=radius, **env_kwargs)
     graph, p, num_action, od_pairs, *_ = args
 
-    for n in [ 12,]:
-        random.seed(seed)
-        np.random.seed(seed)
-        torch.manual_seed(seed)
-
-        hop_neighborhoods = get_hop_neighbors(graph, max_n=n, limit=length_limit)
-        dfr_generator = DFRGenerator(graph, neighbors=hop_neighborhoods, length_limit=length_limit)
-
-        root = 'trained/exp_{}_{}_{}_{}_{}_{}/'.format(env_id, int(radius),
+    dfr_generator = DFRGenerator(graph, n=n, length_limit=length_limit)
+    root = 'trained/exp_{}_{}_{}_{}_{}_{}_{}/'.format(env_id, int(radius),
                                                        int(length_limit[0]),
                                                        int(length_limit[1]),
-                                                       suffix, seed)
-        for param in param_lst:
-            env = DPPEnvironment(graph, p, num_action,
-                                 e=param['e'],
-                                 zeta=param['zeta'],
-                                 c=param['c'],
-                                 a=param['a'],
-                                 alpha=alpha,
-                                 gamma=gamma,
-                                 dfr_generator=dfr_generator,
-                                 od_pairs=od_pairs)
+                                                       n, suffix, seed)
+    for param in param_lst:
+        env = DPPEnvironment(graph, p, num_action,
+                             e=param['e'],
+                             zeta=param['zeta'],
+                             c=param['c'],
+                             a=param['a'],
+                             alpha=alpha,
+                             gamma=gamma,
+                             dfr_generator=dfr_generator,
+                             od_pairs=od_pairs)
 
-            folder = param['exp_name']
-            folder += '({}_{}_{}_{}_{}_{}_{})/'.format(param['a'],
-                                                          param['e'],
-                                                          param['zeta'],
-                                                          param['c'],
-                                                          param['beta'],
-                                                          n, env_kwargs['max_step'])
-            train_dqn(env,
-                      graph, p,
-                      num_action,
-                      beta=param['beta'],
-                      gamma=gamma,
-                      folder=root+folder,
-                      max_step=env_kwargs['max_step'],
-                      other_dim=hop_neighborhoods['max_len'],
-                      **kwargs)
-        print('Training process is over !')
-        print('-------------------------------------')
+        folder = param['exp_name']
+        folder += '({}_{}_{}_{}_{}_{})/'.format(param['a'],
+                                                      param['e'],
+                                                      param['zeta'],
+                                                      param['c'],
+                                                      param['beta'],
+                                                      env_kwargs['max_step'])
+        train_dqn(env,
+                  graph, p,
+                  num_action,
+                  beta=param['beta'],
+                  gamma=gamma,
+                  folder=root+folder,
+                  max_step=env_kwargs['max_step'],
+                  **kwargs)
+    print('Training process is over !')
+    print('-------------------------------------')
 
 
 if __name__ == '__main__':

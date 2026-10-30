@@ -1,19 +1,18 @@
 import numpy as np
 
-from env.geo import base_speed
+from env.geo import base_speed, get_hop_neighbors
 
 
 class DFRGenerator:
-    def __init__(self, graph, neighbors=None, length_limit=None):
-        self.neighbors = neighbors
-        self.length_limit = length_limit
+    def __init__(self, graph, n=0, length_limit=None):
         self.graph = graph
+        self.length_limit = length_limit
+        self.neighbors = get_hop_neighbors(graph, max_n=n, limit=length_limit)
+
         self.nodes = list(graph.nodes)
         self.node2id = {node: i for i, node in enumerate(self.nodes)}
-
         self.edges = []
-        self.edge2id = {}
-        lengths = []
+        self.edge2id, lengths = {}, []
         for i, (u, v, data) in enumerate(graph.edges(data=True)):
             self.edge2id[(u, v)] = i
             self.edges.append((u, v))
@@ -26,11 +25,15 @@ class DFRGenerator:
         self.mask = (self.length >= length_limit[0]) & (self.length <= length_limit[1])
         print('\t The number of road with dynamics: ', self.mask.sum())
 
-        edges_dict = neighbors['edges_dict']
+        edges_dict = self.neighbors['edges_dict']
         self.hop_indices = {}
         for node, hop_edges in edges_dict.items():
             self.hop_indices[node] = [self.edge2id[edge] for edge in hop_edges]
         self.w = None
+
+    @property
+    def dyn_dim(self):
+        return self.neighbors['max_len']
 
     def update(self):
         self.w = np.ones(self.n_edges, dtype=np.float32)

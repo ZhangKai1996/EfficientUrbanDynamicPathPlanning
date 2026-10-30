@@ -3,36 +3,11 @@
 alpha = 0.0167
 gamma = 0.99
 
-n = 6
+n = 5
 env_id = 2
 length_limit = [50.0, 500.0]  # meter; only roads with a length in this range
                               # will have evolving weights over time
 seed = 1234
-
-# Only Static(n=0)  1.0  0.346185
-# Only Static(n=0)  1.0  0.328357
-# Only Static(n=0)  1.0  0.329863
-
-# Only Static(n=2)  0.897  1.196883
-
-# Only Static(n=4)  0.872  1.399282
-# Only Static(n=4)  0.887  1.248813
-
-# Only Static(n=6)  0.949  0.657705
-# Only Static(n=6)  0.955  0.595119
-# Only Static(n=6)  0.949  0.653426
-
-# Only Static(n=8)  0.921  0.937896
-# Only Static(n=8)  0.921  0.928032
-# Only Static(n=8)  0.935  0.79466
-
-# Only Static(n=10)  0.928  0.874665
-# Only Static(n=10)  0.922  0.937232
-# Only Static(n=10)  0.917  0.983522
-
-# Only Static(n=12)  0.95   0.669736
-# Only Static(n=12)  0.946  0.706321
-# Only Static(n=12)  0.941  0.762328
 
 
 def get_kwargs(env_id_, radius_=None):
