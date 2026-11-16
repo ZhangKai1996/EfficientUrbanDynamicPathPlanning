@@ -180,26 +180,43 @@ def test_dqn(env, trainer, num_episodes=100, max_step=100):
 
 
 def main():
-    from parameters import alpha, gamma, seed, n
+    from parameters import alpha, gamma, seed, n, n_sector
     from parameters import radius, length_limit, env_id, env_kwargs, kwargs
+
+    args = load_graph(radius=radius, n_sector=n_sector, **env_kwargs)
+    graph, p, num_action, od_pairs, *_ = args
 
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    suffix = 'Test'
+    suffix = 'Sensitivity'
     param_lst = [
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 60.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
+
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
+
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
     ]
 
-    args = load_graph(radius=radius, **env_kwargs)
-    graph, p, num_action, od_pairs, *_ = args
-
     dfr_generator = DFRGenerator(graph, n=n, length_limit=length_limit)
-    root = 'trained/exp_{}_{}_{}_{}_{}_{}_{}/'.format(env_id, int(radius),
+    root = 'trained/exp_{}_{}_{}_{}_{}_{}_{}_{}/'.format(env_id, int(radius),
                                                        int(length_limit[0]),
                                                        int(length_limit[1]),
-                                                       n, suffix, seed)
+                                                       n, n_sector,
+                                                       suffix, seed)
     for param in param_lst:
         env = DPPEnvironment(graph, p, num_action,
                              e=param['e'],
@@ -211,13 +228,15 @@ def main():
                              dfr_generator=dfr_generator,
                              od_pairs=od_pairs)
 
+        num_episodes = int(kwargs['num_episodes_train']/1e3)
         folder = param['exp_name']
-        folder += '({}_{}_{}_{}_{}_{})/'.format(param['a'],
+        folder += '({}_{}_{}_{}_{}_{}_{})/'.format(param['a'],
                                                       param['e'],
                                                       param['zeta'],
                                                       param['c'],
                                                       param['beta'],
-                                                      env_kwargs['max_step'])
+                                                      env_kwargs['max_step'],
+                                                      num_episodes)
         train_dqn(env,
                   graph, p,
                   num_action,

@@ -1,9 +1,9 @@
 import os
 
 from tqdm import tqdm
-import numpy as np
 import pandas as pd
-
+import numpy as np
+import matplotlib.pyplot as plt
 from algo.trainer_dqn import DPPBSRSTrainer
 from algo.baselines import dijkstra_path
 
@@ -12,8 +12,8 @@ from env.core import DFRGenerator
 from env.environment import DPPEnvironment
 from env.utils import haversine
 
-from parameters import alpha, gamma
-from parameters import n, radius, length_limit, env_id, env_kwargs
+from parameters import alpha, gamma, n, n_sector
+from parameters import radius, length_limit, env_id, env_kwargs, kwargs
 
 pd.set_option('display.max_rows', None)
 pd.set_option('display.max_columns', None)
@@ -21,10 +21,29 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 seed = 1234
-suffix = 'Dynamic Feature'
+suffix = 'Sensitivity'
 param_lst = [
-    {'exp_name': 'Only Static', 'e': 60.0, 'zeta': 5.0, 'a': -1.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
+
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
+
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
+    {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
+    # {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
 ]
+
+
+diff_dict = {j: [] for j, _ in enumerate(param_lst)}
 
 
 def get_index():
@@ -32,7 +51,7 @@ def get_index():
     for param in param_lst:
         idx = param['exp_name']
         if 'Only Static' in idx:
-            idx += '(n={})'.format(n)
+            idx += '(zeta={},e={})'.format(param['zeta'],param['e'])
         elif 'No Dynamic' in idx:
             idx += '(a={},c={})'.format(param['a'], param['c'])
         elif 'No Clipping' in idx:
@@ -44,19 +63,91 @@ def get_index():
     return index
 
 
+def _make_bins(low=-10.0, high=10.0, n_bins=10):
+    left_edges = np.linspace(low, 0.0, n_bins + 1)      # n_bins+1 个点
+    right_edges = np.linspace(0.0, high, n_bins + 1)    # n_bins+1 个点
+    edges = np.concatenate([left_edges, right_edges[1:]])  # 长度 2*n_bins+1
+
+    bins = []
+    for k in range(n_bins):
+        bins.append((edges[k], edges[k + 1], True, False))
+    for k in range(n_bins):
+        a = edges[n_bins + k]
+        b = edges[n_bins + 1 + k]
+        if k == 0:
+            bins.append((a, b, True, True))      # [0,1]
+        else:
+            bins.append((a, b, False, True))     # (a,b]
+    return edges, bins
+
+
+def _count_bins(F, bins):
+    counts = np.zeros(len(bins), dtype=int)
+    for i, (a, b, lc, rc) in enumerate(bins):
+        mask = np.ones(len(F), dtype=bool)
+        mask &= (F >= a) if lc else (F > a)
+        mask &= (F <= b) if rc else (F < b)
+        counts[i] = mask.sum()
+    return counts
+
+
+def plot_hist(ax, F, low=-10.0, high=10.0, n_bins=10, title=None):
+    edges, bins = _make_bins(low, high, n_bins)
+    counts = _count_bins(F, bins)
+    total = counts.sum()
+    ratios = counts / total if total else counts
+
+    centers, widths = [], []
+    for a, b, lc, rc in bins:
+        centers.append((a + b) / 2)
+        widths.append((b - a) * 0.95)
+
+    bars = ax.bar(centers, ratios, width=widths, edgecolor='black', align='center')
+    for bar, r in zip(bars, ratios):
+        if r == 0: continue
+        ax.text(bar.get_x() + bar.get_width() / 2,
+                bar.get_height(), '{:.2%}'.format(r),
+                ha='center', va='bottom', fontsize=7, rotation=0)
+
+    if title is not None: ax.set_title(title)
+
+    ax.set_xticks(edges)
+    ax.set_xticklabels([int(x) for x in edges], rotation=45)
+
+    y_max = ratios.max() if len(ratios) else 0
+    ax.set_ylim(0, y_max * 1.25 if y_max > 0 else 1)
+
+
+def plot_diff_distribution(ret, arr, low=-1.0, high=1.0, bins=10, index=None):
+    fig, axes = plt.subplots(len(ret), 1, figsize=(18, 9), constrained_layout=True)
+    for i, (key, rows) in enumerate(ret.items()):
+        title = index[i]
+        title += '(SR:{:>5.3f},'.format(arr[i, 0])
+        title += 'Gap:{:>5.3f},'.format(arr[i, 1])
+        title += 'Length:{:>5.1f})'.format(arr[i, 2])
+
+        F = np.clip(np.array(rows, dtype=np.float32), low, high)
+        plot_hist(axes[i], F, low=low, high=high, n_bins=bins, title=title)
+
+    # plt.tight_layout()
+    plt.show()
+
+
 def test_dqn(env, trainer, root, max_step=100, render=False):
-    gaps, srs, paths = [], [], {}
+    gaps, srs, lens, paths = [], [], [], {}
     start_node, end_node = None, None
     for j, param in enumerate(param_lst):
         env.e, env.zeta = param['e'], param['zeta']
 
+        num_episodes = int(kwargs['num_episodes_train'] / 1e3)
         folder = root + param['exp_name']
         folder += '({}_{}_{}_{}_{}_{}_{})/'.format(param['a'],
                                                    param['e'],
                                                    param['zeta'],
                                                    param['c'],
                                                    param['beta'],
-                                                   n, max_step)
+                                                   max_step,
+                                                   num_episodes)
         if not os.path.exists(folder): continue
         trainer.beta = param['beta']
         trainer.load_model(folder)
@@ -89,7 +180,7 @@ def test_dqn(env, trainer, root, max_step=100, render=False):
             [cost, *_] = info
 
             diff_static = shaped_reward - original_reward
-            # diff_dict[j].append([diff_static, ])
+            diff_dict[j].append(diff_static)
 
             # diff_dynamic = trainer.potential_diff(state, dyn, mask, next_state, next_dyn, next_mask, done_rl)
             # print('Reward:{:>7.4f}'.format(shaped_reward + trainer.beta * diff))
@@ -104,29 +195,30 @@ def test_dqn(env, trainer, root, max_step=100, render=False):
             state, dyn, mask = next_state, next_dyn, next_mask
             if episode_step >= max_step: break
 
-        gap = 10.0
+        gap, length = -1.0, -1
         if done_rl:
             gap = (total_cost_rl - total_cost_di) / total_cost_di
+            length = len(path_rl)
         gaps.append(gap)
+        lens.append(length)
         srs.append(float(done_rl))
-        paths[param['exp_name']] = [end_node, total_cost_rl, total_shaped_rew_rl, path_rl, done_rl]
+        paths[param['exp_name']+f'_{j}'] = [end_node, total_cost_rl, total_shaped_rew_rl, path_rl, done_rl]
     return {'o': start_node,
             'd': end_node,
             'paths': paths,
-            'others':[gaps, srs]}
+            'result': [gaps, srs, lens]}
 
 
 def main():
-    args = load_graph(radius=radius, **env_kwargs)
+    args = load_graph(radius=radius, n_sector=n_sector, **env_kwargs)
     graph, p, num_action, od_pairs, *_ = args
 
-    hop_neighborhoods = get_hop_neighbors(graph, max_n=n, limit=length_limit)
-    dfr_generator = DFRGenerator(graph, neighbors=hop_neighborhoods, length_limit=length_limit)
-
-    root = 'trained/exp_{}_{}_{}_{}_{}_{}/'.format(env_id, int(radius),
-                                                   int(length_limit[0]),
-                                                   int(length_limit[1]),
-                                                   suffix, seed)
+    dfr_generator = DFRGenerator(graph, n=n, length_limit=length_limit)
+    root = 'trained/exp_{}_{}_{}_{}_{}_{}_{}_{}/'.format(env_id, int(radius),
+                                                           int(length_limit[0]),
+                                                           int(length_limit[1]),
+                                                           n, n_sector,
+                                                           suffix, seed)
     png_folder = root + 'pictures/'
     if not os.path.exists(png_folder): os.mkdir(png_folder)
 
@@ -135,81 +227,80 @@ def main():
                          gamma=gamma,
                          dfr_generator=dfr_generator,
                          od_pairs=od_pairs)
-    trainer = DPPBSRSTrainer(graph, p, num_action,
-                             gamma=gamma,
-                             other_dim=hop_neighborhoods['max_len'])
-    render = True
-    num_episodes = 100
+    trainer = DPPBSRSTrainer(graph, p, num_action, gamma=gamma, dyn_dim=env.dfr.dyn_dim)
+    render = False
+    num_episodes = 1000
 
-    gap_stats, sr_stats = [], []
+    gap_stats, sr_stats, len_stats = [], [], []
     for i in tqdm(range(num_episodes), desc='Testing ...'):
-        result = test_dqn(env, trainer, root, max_step=env_kwargs['max_step'], render=render)
-        gap_stats.append(result['others'][0])
-        sr_stats.append(result['others'][1])
+        ret = test_dqn(env, trainer, root, max_step=env_kwargs['max_step'], render=render)
 
-        if result['o'] is not None and render:
-            name = png_folder + '{}_{}_{}'.format(result['o'], result['d'], i+1)
-            env.render(paths=result['paths'], edges=env.dfr.get_w(), name=name, show=False)
+        if ret['o'] is not None and render:
+            name = png_folder + '{}_{}_{}'.format(ret['o'], ret['d'], i+1)
+            env.render(paths=ret['paths'], edges=env.dfr.get_w(), name=name, show=False)
+        gap_stats.append(ret['result'][0])
+        sr_stats.append(ret['result'][1])
+        len_stats.append(ret['result'][2])
 
-    arr = np.zeros(shape=(len(param_lst), 2))
-    arr[:, 0] = np.array(sr_stats).mean(axis=0)
-    arr[:, 1] = np.array(gap_stats).mean(axis=0)
-    df = pd.DataFrame(arr, index=get_index(), columns=['SR', 'GAP'])
-    df_sorted = df.sort_values(by='SR')
-    print(df_sorted)
+    sr_arr = np.array(sr_stats)
+    gap_arr = np.array(gap_stats)
+    len_arr = np.array(len_stats)
+    print(sr_arr.shape, sr_arr.mean(axis=0).shape)
 
-    # plot_diff_distribution(ret=diff_dict,
-    #                        arr=arr,
-    #                        low=-10.0,
-    #                        high=10.0,
-    #                        bins=20,
-    #                        index=index)
+    arr = np.zeros(shape=(len(param_lst), 3))
+    arr[:, 0] = sr_arr.mean(axis=0)
+    for j in range(len(param_lst)):
+        mask = list(set(np.where(gap_arr[:, j] != -1.0)[0]))
+        arr[j, 1] = gap_arr[mask, j].mean(axis=0)
+        mask = list(set(np.where(len_arr[:, j] != -1)[0]))
+        arr[j, 2] = len_arr[mask, j].mean(axis=0)
+
+    ids = get_index()
+    df = pd.DataFrame(arr, index=ids, columns=['SR', 'GAP', 'Length'])
+    # df_sorted = df.sort_values(by='GAP')
+    print(df)
+
+    plot_diff_distribution(diff_dict, arr, low=-10.0, high=10.0, bins=10, index=ids)
+
+    if gap_arr.shape[1] <= 1: return
+
+    gap_arr_copy = gap_arr.copy()
+    fig, axes = plt.subplots(1, len(param_lst)-1, figsize=(18, 9), constrained_layout=True)
+    mask0 = set(np.where(gap_arr[:, 0] != -1.0)[0])
+    for i in range(1, gap_arr.shape[1]):
+        ids.append('Delta{}'.format(i))
+        deltas = gap_arr[:, 0] - gap_arr[:, i]
+        gap_arr_copy = np.hstack([gap_arr_copy, deltas.reshape(-1, 1)])
+
+        mask = set(np.where(gap_arr[:, i] != -1.0)[0])
+        mask = list(mask0 & mask)
+
+        deltas_part = deltas[mask]
+
+        tmp = np.hstack([gap_arr[mask, 0].reshape(-1, 1),
+                         gap_arr[mask, i].reshape(-1, 1),
+                         deltas_part.reshape(-1, 1)])
+        df = pd.DataFrame(tmp, columns=['0', '1', 'delta'])
+        # print(df.to_string(float_format=lambda x: f'{x:.4f}'))
+
+        vals = np.sort(deltas_part)
+        mean_val = vals.mean()
+
+        ax = axes[i-1]
+        ax.plot(vals, marker='o', linestyle='-', markersize=3, label='Delta (sorted)')
+        ax.axhline(0, color='gray', linewidth=0.8, linestyle='--')
+        ax.axhline(mean_val, color='red', linewidth=1.2, linestyle='-', label=f'Mean = {mean_val:.4f}')
+        ax.set_xlabel('Index')
+        ax.set_ylabel('Deltas')
+        ax.grid(alpha=0.3)
+        ax.set_ylim(bottom=-1.0, top=1.0)
+
+    df = pd.DataFrame(gap_arr_copy, columns=ids)
+    # print(df.to_string(float_format=lambda x: f'{x:.4f}'))
+
+    plt.tight_layout()
+    plt.show()
 
 
 if __name__ == '__main__':
     main()
-
-
-                     # SR       GAP
-# Only Static(n=0)  1.0    0.417223
-# Only Static(n=0)  1.0    0.404275
-# Only Static(n=0)  1.0    0.409008
-
-# Only Static(n=1)  0.842  1.862106
-# Only Static(n=1)  0.867  1.634938
-# Only Static(n=1)  0.883  1.472473
-
-# Only Static(n=2)  0.867  1.584403
-# Only Static(n=2)  0.87   1.551986
-# Only Static(n=2)  0.87   1.552304
-
-# Only Static(n=3)  0.915  1.113557
-# Only Static(n=3)  0.902  1.242529
-# Only Static(n=3)  0.888  1.390932
-
-# Only Static(n=4)  0.909  1.20019
-# Only Static(n=4)  0.913  1.147165
-# Only Static(n=4)  0.917  1.106896
-
-# Only Static(n=5)  0.905  1.231748
-# Only Static(n=5)  0.882  1.44194
-# Only Static(n=5)  0.899  1.280885
-# Only Static(n=5)  0.896  1.320928
-# Only Static(n=5)  0.905  1.225968
-
-# Only Static(n=6)  0.922  1.050249
-# Only Static(n=6)  0.914  1.142688
-# Only Static(n=6)  0.917  1.110906
-
-# Only Static(n=7)  0.938  0.914741
-# Only Static(n=7)  0.929  1.027176
-# Only Static(n=7)  0.927  1.054056
-
-# Only Static(n=8)  0.914  1.137371
-# Only Static(n=8)  0.934  0.957911
-# Only Static(n=8)  0.909  1.197704
-
-# Only Static(n=9)  0.98  0.546905
-# Only Static(n=9)  0.95  0.90679
-# Only Static(n=9)  0.91  1.18928
-# Only Static(n=9)  0.94  0.882426

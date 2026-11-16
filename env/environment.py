@@ -33,6 +33,8 @@ class DPPEnvironment:
         self.node2id = {node: i for i, node in enumerate(self.nodes)}
 
         self.od_pairs = od_pairs
+        self.od_idx = 0
+
         self.start_node_idx = None
         self.end_node_idx = None
         self.cur_node_idx = None
@@ -65,10 +67,10 @@ class DPPEnvironment:
         if self.start_node_idx is None: reuse = False
 
         if not reuse:
-            od_pair = self.od_pairs.pop(0)
-            self.od_pairs.append(od_pair)
-            self.start_node_idx = self.nodes.index(od_pair[0])
-            self.end_node_idx = self.nodes.index(od_pair[1])
+            od_pair = self.od_pairs[self.od_idx]
+            self.start_node_idx = self.node2id[od_pair[0]]
+            self.end_node_idx = self.node2id[od_pair[1]]
+            self.od_idx = (self.od_idx + 1) % len(self.od_pairs)
 
             self.dfr.update()
 
@@ -78,8 +80,10 @@ class DPPEnvironment:
         return self.get_state()
 
     def get_state(self):
+        nodes = self.graph.nodes
         next_nodes = self.p[self.cur_node]
-        node_info = [self.cur_node_idx, self.end_node_idx]
+        dist = haversine(nodes[self.cur_node], nodes[self.end_node])
+        node_info = [self.cur_node_idx, self.end_node_idx, dist]
         dyn = self.dfr.get_dynamics(self.cur_node)
         mask = np.zeros((self.num_action,))
         mask[len(next_nodes):] = -np.inf

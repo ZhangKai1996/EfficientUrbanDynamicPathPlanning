@@ -20,8 +20,7 @@ class SimpleReplayBuffer:
 
     def sample(self, batch_size):
         n = len(self.buffer)
-        if n < batch_size:
-            return self.buffer[:]          # 或 random.sample，n 小无所谓
+        if n <= batch_size: return self.buffer[:]          # 或 random.sample，n 小无所谓
         idx = np.random.randint(0, n, size=batch_size)
         return [self.buffer[i] for i in idx]
 

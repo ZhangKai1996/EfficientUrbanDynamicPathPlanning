@@ -5,7 +5,7 @@
 
 - v1.0: initial version.
 - v1.1: eliminate $O(n)$ hot-path ops in training loop (env/buffer/trainer).
-
+- v1.2: reorganize project folder structure; remove redundant files and dead code.
 
 ## 2. Experiment Logs
 
@@ -26,3 +26,4 @@ $$\Phi_v(s) = \eta V(s)$$
 Main parameters: $e, \beta, \zeta, \eta$
 
 Performance indicators: Success Rate (SR), Mean Gap (GAP), 
+

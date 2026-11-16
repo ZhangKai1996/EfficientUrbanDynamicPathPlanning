@@ -112,7 +112,8 @@ def sector_od_pairs(graph, center, n_sectors=4):
     # 2) 分扇区，每扇区取最远点
     sector_angle = 360.0 / n_sectors
     sector_centers = [(s + 0.5) * sector_angle for s in range(n_sectors)]
-    delta = 0.5 * sector_angle
+    # delta = 0.5 * sector_angle
+    delta = 5.0
 
     sector_upper = {}  # sector_idx -> (node, r)   最外环(最大值)
     sector_median = {}  # sector_idx -> (node, r)   中间环(中位数)
@@ -132,15 +133,18 @@ def sector_od_pairs(graph, center, n_sectors=4):
         sector_upper[s] = cand_part[0]
 
     points_median = [sector_median[s][0] for s in sorted(sector_median.keys())]
-    od_pairs = [(p, center) for p in points_median]
     points_upper = [sector_upper[s][0] for s in sorted(sector_upper.keys())]
-    od_pairs += [(p, center) for p in points_upper]
+    end_node = points_upper.pop(0)
+    od_pairs = [(center, end_node), ]
+    od_pairs += [(p, end_node) for p in points_median]
+    od_pairs += [(p, end_node) for p in points_upper]
 
     # od_pairs = []
     # for i, end_node in enumerate(points_upper):
     #     for j, start_node in enumerate(points_upper):
     #         if i == j: continue
-    #         if (j - i) % n_sectors in (1, n_sectors - 1): continue
+    #         if n_sectors >= 6:
+    #             if (j - i) % n_sectors in (1, n_sectors-1): continue
     #         od_pairs.append((start_node, end_node))
 
     print(f"\t OD 对: {len(od_pairs)}, 实际连通 OD 对: {len(set(od_pairs))}")
@@ -179,6 +183,7 @@ def plot_edge_length(edge_lens, high=1.0, n_bins=20, show=False, name='fig'):
 
     fig.savefig(name+'.png', dpi=300)
     if show: plt.show()
+    plt.close(fig)
 
 
 def load_graph(place_name='Nanjing, China',
@@ -187,6 +192,7 @@ def load_graph(place_name='Nanjing, China',
                radius=1e6,
                remove=True,
                render=False,
+               n_sector=None,
                **kwargs):
     print('-------Loading urban graph-----------')
     print('\t Place name:', place_name)
@@ -225,17 +231,18 @@ def load_graph(place_name='Nanjing, China',
     _, _, edge_lens = add_dynamic_weight(graph)
     print(f"\t\t Strong Connection: {nx.is_strongly_connected(graph)}")
 
-    od_pairs = sector_od_pairs(graph, center_node, n_sectors=50)
-
-    # start_node = list(graph.nodes)[ranked_nodes[-1]]
-    # od_pairs = [(start_node, center_node_), ]
+    if n_sector is not None:
+        od_pairs = sector_od_pairs(graph, center_node_, n_sectors=n_sector)
+    else:
+        start_node = list(graph.nodes)[ranked_nodes[-1]]
+        od_pairs = [(start_node, center_node_)]
 
     if render:
         city_name = place_name.split(',')[0]
         markers = {'D': center_node_}
         for i, od_pair in enumerate(od_pairs):
             markers.update({f'O{i}': od_pair[0]})
-        name = 'data/{}_{}_{}'.format(city_name, int(radius), center_idx)
+        name = 'data/{}_{}_{}_{}'.format(city_name, int(radius), center_idx, n_sector)
         StaticRender(graph).draw(markers=markers, name=name, show=False)
         plot_edge_length(edge_lens, high=1.0, n_bins=20, name=name+'_dist')
 

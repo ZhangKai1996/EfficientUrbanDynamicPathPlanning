@@ -70,13 +70,6 @@ class DPPBSRSTrainer:
                 q = q + torch.as_tensor(mask, dtype=torch.float32)
             return int(torch.argmax(q))
 
-            # state_tensor = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
-        # dyn_tensor = torch.tensor(dyn, dtype=torch.float32).unsqueeze(0)
-        # q_values = self.q_network(state_tensor, dyn_tensor)[0].detach().numpy()
-        # q_values += mask
-        # best_actions = np.argwhere(q_values == q_values.max()).squeeze(axis=1)
-        # return np.random.choice(best_actions)
-
     def _compute_potential(self, state_tensor, dyn_tensor, mask_tensor):
         with torch.no_grad():
             q = self.q_network(state_tensor, dyn_tensor)
@@ -129,7 +122,7 @@ class DPPBSRSTrainer:
             phi_s = self._compute_potential(states_tensor, dyns_tensor, masks_tensor)
             phi_s_prime = self._compute_potential(next_states_tensor, next_dyns_tensor, next_masks_tensor)
             deltas = self.gamma * phi_s_prime - phi_s
-            deltas = np.clip(deltas, a_min=-3.0, a_max=3.0)
+            # deltas = np.clip(deltas, a_min=-3.0, a_max=3.0)
             deltas *= (1 - dones_tensor)
             rewards_tensor += torch.tensor(self.beta * deltas, dtype=torch.float32)
 
@@ -165,5 +158,6 @@ class DPPBSRSTrainer:
         file_path = load_path + file_name + '.pth'
         if prefix is not None:
             file_path = load_path + f'model_{prefix}.pth'
+        print(file_path)
         state_dict = torch.load(file_path, weights_only=True)
         self.q_network.load_state_dict(state_dict)
