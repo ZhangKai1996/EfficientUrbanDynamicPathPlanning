@@ -8,7 +8,7 @@ env_id = 2
 length_limit = [50.0, 500.0]  # meter; only roads with a length in this range
                               # will have evolving weights over time
 seed = 1234
-n_sector = 25
+n_sector = 10
 
 
 def get_kwargs(env_id_, radius_=None):
@@ -20,7 +20,7 @@ def get_kwargs(env_id_, radius_=None):
                   'max_step': 100}
 
     kwargs_ = {'num_episodes_train': 100,
-              'epsilon_decay': 0.1/4.0,
+              'epsilon_decay': 0.1,
               'epsilon_end': 0.1,
               'batch_size': 256,
               'save_rate': 100}
@@ -28,16 +28,16 @@ def get_kwargs(env_id_, radius_=None):
     # Nanjing, China
     if env_id_ == 1:
         if radius_ is None: radius_ = -1
-        env_kwargs_['max_step'] = 250
+        env_kwargs_['max_step'] = 500
         env_kwargs_['center_idx'] = 12000
         env_kwargs_['place_name'] = "Nanjing, China"
-        kwargs_['num_episodes_train'] = int(1e5)
+        kwargs_['num_episodes_train'] = int(2e5)
         return radius_, env_kwargs_, kwargs_
 
     # Chaoyang, Beijing, China
     if env_id_ == 2:
         if radius_ is None: radius_ = -1
-        env_kwargs_['max_step'] = 250
+        env_kwargs_['max_step'] = 300
         env_kwargs_['center_idx'] = 8850
         env_kwargs_['place_name'] = "Chaoyang, Beijing, China"
         kwargs_['num_episodes_train'] = int(2e5)
@@ -46,10 +46,10 @@ def get_kwargs(env_id_, radius_=None):
     # Pudong, Shanghai, China
     if env_id_ == 3:
         if radius_ is None: radius_ = -1
-        env_kwargs_['max_step'] = 250
-        env_kwargs_['center_idx'] = 8850
+        env_kwargs_['max_step'] = 300
+        env_kwargs_['center_idx'] = 9000
         env_kwargs_['place_name'] = "Pudong, Shanghai, China"
-        kwargs_['num_episodes_train'] = int(1e5)
+        kwargs_['num_episodes_train'] = int(2e5)
         return radius_, env_kwargs_, kwargs_
 
     raise NotImplementedError

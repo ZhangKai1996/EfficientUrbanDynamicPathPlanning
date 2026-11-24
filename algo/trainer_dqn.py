@@ -75,7 +75,6 @@ class DPPBSRSTrainer:
             q = self.q_network(state_tensor, dyn_tensor)
             q = q + mask_tensor
             v = torch.max(q, dim=1).values
-            # v = np.tanh(v*0.01)
         return v
 
     def potential_diff(self, state, dyn, mask, next_state, next_dyn, next_mask, done):
@@ -89,7 +88,7 @@ class DPPBSRSTrainer:
 
         phi_s = self._compute_potential(state_tensor, dyn_tensor, mask_tensor).squeeze().numpy()
         phi_s_prime = self._compute_potential(next_state_tensor, next_dyn_tensor, next_mask_tensor).squeeze().numpy()
-        diff = (self.gamma * phi_s_prime - phi_s) * float(not done)
+        diff = (self.gamma * phi_s_prime - phi_s) * self.beta
         # print('Phi1:{:>7.4f}, Phi2:{:>7.4f}'.format(phi_s, self.gamma * phi_s_prime), end=', ')
         # print('Diff:{:>7.4f}'.format(diff), end=' ==> ')
         return diff
@@ -123,7 +122,6 @@ class DPPBSRSTrainer:
             phi_s_prime = self._compute_potential(next_states_tensor, next_dyns_tensor, next_masks_tensor)
             deltas = self.gamma * phi_s_prime - phi_s
             # deltas = np.clip(deltas, a_min=-3.0, a_max=3.0)
-            deltas *= (1 - dones_tensor)
             rewards_tensor += torch.tensor(self.beta * deltas, dtype=torch.float32)
 
         # Compute Q values using current Q network

@@ -14,8 +14,8 @@ pd.set_option('display.max_columns', None)
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
-tags = ['SR', 'Cost', 'Loss', 'Mean Step', 'Dist']
-tags_ = ['Success Rate', 'Cost', 'Loss', 'Length', 'Distance']
+tags = ['ORew', 'SR', 'Cost', 'Mean Step', 'Dist']
+tags_ = ['Reward', 'Success Rate', 'Cost', 'Length', 'Distance']
 lim_dict = {
     # 'SR': [-0.05, 1.05],
     # 'MGap': [0.15, 1.05],
@@ -65,12 +65,14 @@ def plot_train_curve(root, max_step, param_lst, name=None, kwargs=None):
             print(folder, os.path.exists(folder))
             idx = param['exp_name']
             if 'Only Static' in idx:
-                idx += r'(zeta={},e={})'.format(param['zeta'],param['e'])
+                idx += r'(zeta={})'.format(param['zeta'])
             elif 'No Dynamic' in idx:
                 idx += '(a={},c={})'.format(param['a'],param['c'])
             elif 'No Clipping' in idx:
                 idx += '(beta={})'.format(param['beta'])
             elif 'Hybrid' in idx:
+                idx += '(zeta={},beta={})'.format(param['zeta'], param['beta'])
+            elif 'Ours' in idx:
                 idx += '(beta={},'.format(param['beta'])
                 idx += 'a={},c={})'.format(param['a'],param['c'])
             index.append(idx)
@@ -125,31 +127,47 @@ def plot_train_curve(root, max_step, param_lst, name=None, kwargs=None):
     if name is not None: fig.savefig(name+'.pdf', dpi=400)
 
     df = pd.DataFrame(arr, index=index, columns=tags_)
-    df_sorted = df.sort_values(by='Cost')
-    print(df_sorted)
-    # print(df)
+    # df_sorted = df.sort_values(by='Cost')
+    # print(df_sorted)
+    print(df)
 
 
 def main():
     seed = 1234
-    suffix = 'Sensitivity'
+    suffix = 'Single Sensitivity'
     param_lst = [
-        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
-        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
-        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
-        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
-        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
+        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 9.0, 'c': 0.0, 'beta': 0.0},
+        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 8.0, 'c': 0.0, 'beta': 0.0},
+        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 7.0, 'c': 0.0, 'beta': 0.0},
+        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 6.0, 'c': 0.0, 'beta': 0.0},
+        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+        # {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+        #
+        # {'exp_name': 'Hybrid', 'a': -1.0, 'e': 50.0, 'zeta': 9.0, 'c': 0.0, 'beta': 1.0},
+        # {'exp_name': 'Hybrid', 'a': -1.0, 'e': 50.0, 'zeta': 8.0, 'c': 0.0, 'beta': 1.0},
+        # {'exp_name': 'Hybrid', 'a': -1.0, 'e': 50.0, 'zeta': 7.0, 'c': 0.0, 'beta': 1.0},
+        # {'exp_name': 'Hybrid', 'a': -1.0, 'e': 50.0, 'zeta': 6.0, 'c': 0.0, 'beta': 1.0},
+        # {'exp_name': 'Hybrid', 'a': -1.0, 'e': 50.0, 'zeta': 5.0, 'c': 0.0, 'beta': 1.0},
+        # {'exp_name': 'Hybrid', 'a': -1.0, 'e': 50.0, 'zeta': 4.0, 'c': 0.0, 'beta': 1.0},
 
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 9.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 8.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 7.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 6.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
+
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 9.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 8.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 7.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 6.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 5.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 4.0, 'c': 0.0, 'beta': 1.0},
     ]
 
-    env_id, radius, max_step = 2, -1, 250
-    # env_id, radius, max_step = 3, -1, 250
-    # env_id, radius, max_step = 1, -1, 250
+    # env_id, radius, max_step = 2, -1, 300
+    # env_id, radius, max_step = 3, -1, 300
+    env_id, radius, max_step = 1, -1, 500
 
     _, env_kwargs, kwargs = get_kwargs(env_id_=env_id, radius_=radius)
     root = 'trained/exp_{}_{}_{}_{}_{}_{}_{}_{}/'.format(env_id, int(radius),

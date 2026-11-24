@@ -13,7 +13,7 @@ class DuelingDQN(nn.Module):
         super(DuelingDQN, self).__init__()
         self.embedding = nn.Embedding(state_dim, emb_dim)
 
-        self.fc1 = nn.Linear(emb_dim*2+1+dyn_dim, hidden_dim)
+        self.fc1 = nn.Linear(emb_dim+dyn_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)
         self.fc3 = nn.Linear(hidden_dim, hidden_dim)
 
@@ -22,9 +22,9 @@ class DuelingDQN(nn.Module):
 
     def forward(self, state, dyn_features):
         x0 = self.embedding(state[:, 0].to(torch.long))
-        x1 = self.embedding(state[:, 1].to(torch.long))
-        x2 = state[:, 2].reshape(-1, 1)
-        x = torch.cat([x0, x1 - x0, x2, dyn_features], dim=-1)
+        # x1 = self.embedding(state[:, 1].to(torch.long))
+        # x = torch.cat([x0, x1 - x0, dyn_features], dim=-1)
+        x = torch.cat([x0, dyn_features], dim=-1)
 
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))

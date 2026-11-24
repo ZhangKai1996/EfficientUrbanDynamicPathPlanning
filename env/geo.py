@@ -95,7 +95,7 @@ def add_dynamic_weight(graph):
 # ----------------------------------------
 # 5. 按一定规则，挑选OD对，用于训练
 # ----------------------------------------
-def sector_od_pairs(graph, center, n_sectors=4):
+def sector_od_pairs(graph, center, n_sectors=4, angle_start=0, angle_end=360):
     nodes = graph.nodes
     center_info = nodes[center]
     cx, cy = center_info['x'], center_info['y']
@@ -110,8 +110,8 @@ def sector_od_pairs(graph, center, n_sectors=4):
         node_info.append((n, theta, r))
 
     # 2) 分扇区，每扇区取最远点
-    sector_angle = 360.0 / n_sectors
-    sector_centers = [(s + 0.5) * sector_angle for s in range(n_sectors)]
+    sector_angle = (angle_end-angle_start) / n_sectors
+    sector_centers = [angle_start + (s + 0.5) * sector_angle for s in range(n_sectors)]
     # delta = 0.5 * sector_angle
     delta = 5.0
 
@@ -134,10 +134,7 @@ def sector_od_pairs(graph, center, n_sectors=4):
 
     points_median = [sector_median[s][0] for s in sorted(sector_median.keys())]
     points_upper = [sector_upper[s][0] for s in sorted(sector_upper.keys())]
-    end_node = points_upper.pop(0)
-    od_pairs = [(center, end_node), ]
-    od_pairs += [(p, end_node) for p in points_median]
-    od_pairs += [(p, end_node) for p in points_upper]
+    od_pairs = [(p, center) for p in points_upper]
 
     # od_pairs = []
     # for i, end_node in enumerate(points_upper):
@@ -165,8 +162,6 @@ def plot_edge_length(edge_lens, high=1.0, n_bins=20, show=False, name='fig'):
     width = high / n_bins
 
     bars = ax.bar(centers, ratios, width=width * 0.95, edgecolor='black', align='center')
-
-    # 在每根柱子上方显示占比(百分比)和计数
     for bar, r, c in zip(bars, ratios, counts):
         ax.text(bar.get_x() + bar.get_width() / 2,
                 bar.get_height(),
@@ -224,7 +219,7 @@ def load_graph(place_name='Nanjing, China',
     print(f"\t\t Number of action: {num_action}")
 
     print(f"\t\t Center node (origin): ", center_node, center_node in list(graph.nodes))
-    center_node_, ranked_nodes = get_rank(graph, center_node, change_end_node=False)
+    center_node_, ranked_nodes = get_rank(graph, center_node, change_end_node=True)
     print(f"\t\t Center node (new): ", center_node_, center_node_ in list(graph.nodes))
     print(f"\t\t Number of ranked nodes: ", len(ranked_nodes))
 
@@ -232,7 +227,10 @@ def load_graph(place_name='Nanjing, China',
     print(f"\t\t Strong Connection: {nx.is_strongly_connected(graph)}")
 
     if n_sector is not None:
-        od_pairs = sector_od_pairs(graph, center_node_, n_sectors=n_sector)
+        od_pairs = sector_od_pairs(graph, center_node_, n_sectors=n_sector, angle_end=120) # 2
+        # od_pairs = sector_od_pairs(graph, center_node_, n_sectors=n_sector, angle_start=100, angle_end=180) # 3
+        # od_pairs = sector_od_pairs(graph, center_node_, n_sectors=n_sector, angle_start=60, angle_end=150) # 1
+        # od_pairs = sector_od_pairs(graph, center_node_, n_sectors=n_sector, angle_start=80, angle_end=100) # 1
     else:
         start_node = list(graph.nodes)[ranked_nodes[-1]]
         od_pairs = [(start_node, center_node_)]

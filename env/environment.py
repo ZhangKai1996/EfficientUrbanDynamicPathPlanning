@@ -80,10 +80,8 @@ class DPPEnvironment:
         return self.get_state()
 
     def get_state(self):
-        nodes = self.graph.nodes
         next_nodes = self.p[self.cur_node]
-        dist = haversine(nodes[self.cur_node], nodes[self.end_node])
-        node_info = [self.cur_node_idx, self.end_node_idx, dist]
+        node_info = [self.cur_node_idx, self.end_node_idx]
         dyn = self.dfr.get_dynamics(self.cur_node)
         mask = np.zeros((self.num_action,))
         mask[len(next_nodes):] = -np.inf
@@ -95,9 +93,14 @@ class DPPEnvironment:
         nodes = self.graph.nodes
         d1 = haversine(nodes[u], nodes[self.end_node])
         d2 = haversine(nodes[v], nodes[self.end_node])
-
         phi_s = -d1 * self.zeta + self.b
         phi_s_prime = -d2 * self.zeta + self.b
+
+        # diff = self.gamma * phi_s_prime - phi_s
+        # diff_forward = self.gamma * phi_s - phi_s_prime
+        # if diff_forward * diff > 0:
+        #     diff = 1.0 * phi_s_prime - phi_s
+
         diff = 1.0 * phi_s_prime - phi_s
 
         if self.a >= 0.0: diff = min(self.a, diff)
@@ -108,7 +111,7 @@ class DPPEnvironment:
             print('Cost:{:>7.4f}'.format(cost), end=' ==> ')
             print('Phi1:{:>7.4f}, Phi2:{:>7.4f}'.format(phi_s, phi_s_prime), end=', ')
             print('Diff:{:>7.4f}'.format(diff), end=', ')
-            print('Reward:{:>7.4f}'.format(reward), end=' ==> ')
+            print('Reward:{:>7.4f}'.format(reward))
         return reward, cost
 
     def step(self, action, verbose=False):

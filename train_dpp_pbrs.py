@@ -75,7 +75,7 @@ def train_dqn(env,
                           next_state, next_dyn, next_mask, float(done))
             trainer.replay_buffer.push(*experience)
 
-            if episode_step <= 1:
+            if episode_step <= 4:
                 loss = trainer.update_q_network(t=step)
                 if loss is not None: loss_stats.append(loss)
 
@@ -190,25 +190,21 @@ def main():
     np.random.seed(seed)
     torch.manual_seed(seed)
 
-    suffix = 'Sensitivity'
+    suffix = 'Single Sensitivity'
     param_lst = [
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 9.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 8.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 7.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 6.0, 'c': 0.0, 'beta': 0.0},
         {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
         {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 100.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
 
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 50.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
-
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 5.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 4.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 3.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 2.0, 'c': 0.0, 'beta': 0.0},
-        {'exp_name': 'Only Static', 'a': -1.0, 'e': 10.0, 'zeta': 1.0, 'c': 0.0, 'beta': 0.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 9.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 8.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 7.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 6.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 5.0, 'c': 0.0, 'beta': 1.0},
+        {'exp_name': 'Hybrid', 'a': -1.0, 'e': 100.0, 'zeta': 4.0, 'c': 0.0, 'beta': 1.0},
     ]
 
     dfr_generator = DFRGenerator(graph, n=n, length_limit=length_limit)
